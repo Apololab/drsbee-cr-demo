@@ -7,14 +7,14 @@ namespace Demo
 {
     class MainClass
     {
-        static BackendConfiguration CONFIG = BackendConfiguration.DEV_CR;
-        const string PHYSICIAN_USER = "doctor3@test.com";
-        const String PHYSICIAN_PWD = "123456";
-        const float LONGITUDE = -84.0468221f;
-        const float LATITUDE = 9.919188f;
+        static BackendConfiguration CONFIG = BackendConfiguration.DEV_PA;
+        const string PHYSICIAN_USER = "doctor@test.com";
+        const string PHYSICIAN_PWD = "123456";
+        static float LONGITUDE = CONFIG.DefaultLongitude;
+        static float LATITUDE = CONFIG.DefaultLatitude;
 
-
-        const String PATIENT_NAME = "Juan Carlos Rojas Benavides";
+        const string PATIENT_IDENTIFICATION = "1-100-12";
+        const string CEDULA_PANAMA_TYPE = "1";
 
 
         static InfoWebService infoServices = new InfoWebService(CONFIG);
@@ -53,22 +53,30 @@ namespace Demo
 
 
             //Se busca un paciente por nombre
-            Console.WriteLine("-------- Buscando pacientes ------");
-            var pacientes = patientWebService.searchPatientsAsync(criteria: PATIENT_NAME,includeUnregistered: true, limit: 50).Result;
-            Console.WriteLine("-> Pacientes encontrados " + pacientes.Count);
+            Console.WriteLine("-------- Buscando pacientes por nombre ------");
+            var pacientes = patientWebService.searchPatientsAsync(criteria: "juan",includeUnregistered: true, limit: 50).Result; 
+            Console.WriteLine("-> Pacientes encontrados por nombre " + pacientes.Count);
+
+            Console.WriteLine("-------- Buscando paciente específico por identificación ------");
+
+            var pacienteRegistrado = patientWebService.getBasicPatientByIdentificationAsync( PATIENT_IDENTIFICATION,CEDULA_PANAMA_TYPE,false ).Result;
+
             CreatedEncounter encounter;
             // Procedemos a crear una cita, ya sea con un paciente registrado o con uno nuevo para registrar
-            if (pacientes.Count > 0)
+            if (pacienteRegistrado != null)
             {
-                string patientId = pacientes[0].id;
                 Console.WriteLine("-------- Iniciando cita con paciente ya registrado ------");
-                encounter = encounterWebService.beginEncounterPatientAsync(patientId, "cita de prueba").Result;
+                encounter = encounterWebService.beginEncounterPatientAsync(pacienteRegistrado.id, "cita de prueba").Result;
             }
             else
             {
-                Console.WriteLine("-------- Iniciando cita con paciente a registrar ------");
-                //encounter = encounterWebService.beginEncounterNewPatientAsync( ..... )
-                throw new Exception("Aun no ejemplificado");
+                Console.WriteLine("-------- Iniciando cita con paciente nuevo ------");
+                encounter = encounterWebService.beginEncounterNewPatientAsync(
+                    identification: PATIENT_IDENTIFICATION, identificationTypeCode: CEDULA_PANAMA_TYPE,
+                    firstName: "paciente", lastName: "prueba", 
+                    phoneNumber: "88888888", 
+                    birthdateDay: 1, birthdateMonth: 1, birthdateYear:1999
+                    ,reason: "cita de prueba").Result;
             }
 
 
