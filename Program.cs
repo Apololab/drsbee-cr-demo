@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using DrsBee.API;
 
 namespace Demo
@@ -8,17 +10,20 @@ namespace Demo
     class MainClass
     {
         static BackendConfiguration CONFIG = BackendConfiguration.DEV_PA;
-        const string PHYSICIAN_USER = "doctor@test.com";
-        const string PHYSICIAN_PWD = "123456";
+        const string TEST_PHYSICIAN_IDENTIFICATION = "o2619142";
+        const string TEST_PHYSICIAN_IDENTIFICATION_TYPE_CODE = "2";
         static float LONGITUDE = CONFIG.DefaultLongitude;
         static float LATITUDE = CONFIG.DefaultLatitude;
 
         const string PATIENT_IDENTIFICATION = "1-100-12";
         const string CEDULA_PANAMA_TYPE = "1";
 
+        const string API_KEY_RESOURCE = "apiclient.key"; // El archivo esta incluído en el proyecto como resource, en el directorio "Resources"
+        const string API_KEY_ACCOUNT = "apiuser@test.com";
 
         static InfoWebService infoServices = new InfoWebService(CONFIG);
         static UserWebService userWebService = new UserWebService(CONFIG);
+        static APIWebServices apiWebServices = new APIWebServices(CONFIG);
         static PatientWebService patientWebService = new PatientWebService(CONFIG);
         static EncounterWebService encounterWebService = new EncounterWebService(CONFIG);
         static DrugWebService drugWebService = new DrugWebService(CONFIG);
@@ -26,6 +31,11 @@ namespace Demo
 
         public static void Main(string[] args)
         {
+            // Inicializamos el token para los servicios de API
+            using (Stream resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(API_KEY_RESOURCE)) {
+                DrsBeeAuth.InitApi(API_KEY_ACCOUNT, resourceStream);
+            }
+
             //Revisa la conexión al ambiente y obtiene info basica
             Console.WriteLine("-------- Conectando a ambiente ------");
             var environment = infoServices.getBackendEnvironmentAsync().Result;
@@ -37,15 +47,15 @@ namespace Demo
             List<PrescriptionAbbreviature> prescriptionAbbreviatures = catalogWebService.getPrescriptionAbbreviaturesAsync().Result;
 
             //Se hace login
-            Console.WriteLine("-------- Login con médico de prueba ------");
-            var login = userWebService.loginAsHealthprofessionalAsync(PHYSICIAN_USER, PHYSICIAN_PWD).Result;
+            Console.WriteLine("-------- Login con médico de pruebas mediante API ------");
+            var login = apiWebServices.loginAsHealthProfessional(TEST_PHYSICIAN_IDENTIFICATION, TEST_PHYSICIAN_IDENTIFICATION_TYPE_CODE).Result;
             Console.WriteLine("-> " + login.userType);
 
             //Una vez obteniendo el tipo de usuario logeado, se procede a obtener sus datos
             Console.WriteLine("-------- Login con médico de prueba ------");
             var physician = userWebService.getPhysicianLoginAsync().Result;
-            Console.WriteLine("-> Cedula" + physician.identification);
-            Console.WriteLine("-> Nombre" + physician.firstName+"-"+ physician.lastName);
+            Console.WriteLine("-> Cedula " + physician.identification);
+            Console.WriteLine("-> Nombre " + physician.firstName+"-"+ physician.lastName);
 
             //Obtenemos cuantas prescripciones tiene restantes
             var prescriptions = userWebService.getHealthProfessionalRemainingPrescriptionsAsync().Result;
@@ -139,6 +149,7 @@ namespace Demo
 
             Console.WriteLine("-> ID de prescripción nueva "+finishedEncounter.prescriptionId);
             Console.WriteLine("-> Código para retirar la prescripción en farmacias " + finishedEncounter.prescriptionPublicCode);
+
 
         }
 
