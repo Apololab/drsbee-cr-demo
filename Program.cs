@@ -50,30 +50,22 @@ namespace Demo
                 string newPhysicianIdentification = string.Format("{0}{1}{2}{3}{4}{5}", DateTime.Now.Day, DateTime.Now.Month, DateTime.Now.Year, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
                 //Se intenta hacer login para probar si medico existe
                 Console.WriteLine("-------- Se intenta hacer login como si medico existiera ------");
-                LoginSuccess login;
-                try
+                LoginSuccess login = apiWebServices.loginAsHealthProfessional(newPhysicianIdentification, TEST_PHYSICIAN_IDENTIFICATION_TYPE_CODE).Result;
+                if (login == null)
                 {
-                    login = apiWebServices.loginAsHealthProfessional(newPhysicianIdentification, TEST_PHYSICIAN_IDENTIFICATION_TYPE_CODE).Result;
+                    Console.WriteLine("-> Medico no existe, se procede a hacer login con medico nuevo");
+                    login = apiWebServices.loginAsNewPhysician(identification: newPhysicianIdentification,
+                        identificationTypeCode: TEST_PHYSICIAN_IDENTIFICATION_TYPE_CODE,
+                        email: newPhysicianIdentification + "@test.com",
+                        firstName: "Test Physician",
+                        lastName: newPhysicianIdentification,
+                        physicianCode: newPhysicianIdentification).Result;
                 }
-                catch (Exception ex)
+                if (login == null)
                 {
-                    WebServiceException wsex = ex.InnerException != null ? ex.InnerException as WebServiceException : null;
-                    if (wsex != null && wsex.Type == WebServiceException.ERROR_API_USER_NOT_FOUND)
-                    {
-                        Console.WriteLine("-> Medico no existe, se procede a hacer login con medico nuevo");
-                        login = apiWebServices.loginAsNewPhysician(identification: newPhysicianIdentification,
-                            identificationTypeCode: TEST_PHYSICIAN_IDENTIFICATION_TYPE_CODE,
-                            email: newPhysicianIdentification + "@test.com",
-                            firstName: "Test Physician",
-                            lastName: newPhysicianIdentification,
-                            physicianCode: newPhysicianIdentification).Result;
-                    }
-                    else
-                    {
-                        throw ex;
-                    }
+                    throw new Exception("No se pudo realizar login");
                 }
-
+                       
                 Console.WriteLine("-> " + login.userType);
 
                 //Una vez obteniendo el tipo de usuario logeado, se procede a obtener sus datos
