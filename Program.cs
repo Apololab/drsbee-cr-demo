@@ -14,7 +14,7 @@ namespace Demo
         static float LONGITUDE = CONFIG.DefaultLongitude;
         static float LATITUDE = CONFIG.DefaultLatitude;
 
-        const string PATIENT_IDENTIFICATION = "1-100-12";
+        const string PATIENT_IDENTIFICATION = "1-100-125";
         const string CEDULA_PANAMA_TYPE = "1";
 
         const string API_KEY_RESOURCE = "apiclient.key"; // El archivo esta incluído en el proyecto como resource, en el directorio "Resources"
@@ -84,9 +84,29 @@ namespace Demo
                 var pacientes = patientWebService.searchPatientsAsync(criteria: "juan", includeUnregistered: true, limit: 50).Result;
                 Console.WriteLine("-> Pacientes encontrados por nombre " + pacientes.Count);
 
-                Console.WriteLine("-------- Buscando paciente específico por identificación ------");
+                Console.WriteLine("-------- Buscando paciente sin cédula, pero registrado en sistema externo ------");
+                string patientIdInOurSystem = string.Format("{0}{1}{2}{3}{4}{5}", DateTime.Now.Day, DateTime.Now.Month, DateTime.Now.Year, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
+                PatientSearchResult existingPatientWithOurId = apiWebServices.searchPatientByExternalId(patientIdInOurSystem).Result;
+                if (existingPatientWithOurId == null)
+                {
+                    Console.WriteLine("-------- Paciente no se encontró paciente con nuestro ID, procedemos a crearlo con nuestro ID ------");
+                    CreatedEncounter encounterJustToRegister = encounterWebService.beginEncounterNewPatientWithExternalIdAsync(
+                        externalId: patientIdInOurSystem,
+                        firstName: "paciente", lastName: "prueba api externo",
+                        phoneNumber: "88888888",
+                        birthdateDay: 1, birthdateMonth: 1, birthdateYear: 1999
+                        , reason: "cita de prueba").Result;
+                    CompleteEncounter encounterFinish = new CompleteEncounter();
+                    encounterFinish.encounter = encounterJustToRegister;
+                    encounterWebService.finishEncounterAsync(encounterFinish).Wait();
 
-                var pacienteRegistrado = patientWebService.getBasicPatientByIdentificationAsync(PATIENT_IDENTIFICATION, CEDULA_PANAMA_TYPE, false).Result;
+                    Console.WriteLine("-------- Repetimos la busqueda, ahora deberia aparecer el paciente con el ID externo ------");
+                    existingPatientWithOurId = apiWebServices.searchPatientByExternalId(patientIdInOurSystem).Result;
+
+                }
+
+
+                PatientSearchResult pacienteRegistrado = existingPatientWithOurId;
 
                 CreatedEncounter encounter;
                 // Procedemos a crear una cita, ya sea con un paciente registrado o con uno nuevo para registrar
