@@ -19,6 +19,9 @@ namespace Demo
 
         const string API_KEY_RESOURCE = "apiclient.key"; // El archivo esta incluído en el proyecto como resource, en el directorio "Resources"
         const string API_KEY_ACCOUNT = "apiuser@test.com";
+        const string DISEASE_CATALOG_VERSION = "icd10";
+        const string DISEASE_ACTIVE = "1";
+        const string DISEASE_INACTIVE = "2";
 
         static InfoWebService infoServices = new InfoWebService(CONFIG);
         static UserWebService userWebService = new UserWebService(CONFIG);
@@ -27,6 +30,8 @@ namespace Demo
         static EncounterWebService encounterWebService = new EncounterWebService(CONFIG);
         static DrugWebService drugWebService = new DrugWebService(CONFIG);
         static CatalogWebService catalogWebService = new CatalogWebService(CONFIG);
+        static PharmacyWebService pharmacyWebService = new PharmacyWebService(CONFIG);
+        static DiseaseWebService diseaseWebService = new DiseaseWebService(CONFIG);
 
         public static void Main(string[] args)
         {
@@ -65,7 +70,7 @@ namespace Demo
                 {
                     throw new Exception("No se pudo realizar login");
                 }
-                       
+
                 Console.WriteLine("-> " + login.userType);
 
                 //Una vez obteniendo el tipo de usuario logeado, se procede a obtener sus datos
@@ -73,6 +78,12 @@ namespace Demo
                 var physician = userWebService.getPhysicianLoginAsync().Result;
                 Console.WriteLine("-> Cedula " + physician.identification);
                 Console.WriteLine("-> Nombre " + physician.firstName + "-" + physician.lastName);
+
+                // Obtenemos las farmacias disponibles
+                Console.WriteLine("-------- Obteniendo farmacias medicamentos ------");
+                List<Pharmacy> pharmacies = pharmacyWebService.getPharmaciesAsync().Result;
+                Console.WriteLine("-> Farmacias registradas" + pharmacies.Count);
+
 
                 //Obtenemos cuantas prescripciones tiene restantes
                 var prescriptions = userWebService.getHealthProfessionalRemainingPrescriptionsAsync().Result;
@@ -163,6 +174,62 @@ namespace Demo
                 drugsToAdd.Add(prescriptionDrug);
 
 
+                Console.WriteLine("-------- Agregamos enfermedades que queremos registrar en el expediente del paciente pero que habian sido detectadas en consultas pasadas -----");
+
+
+                List<Disease> results = diseaseWebService.searchDiseaseByNameAsync(DISEASE_CATALOG_VERSION, "dolor").Result; //-> Opcional permite ayudarle al medico a buscar enfermedades en el catalogo oficial
+
+                List<HealthProblem> healthProblems = new List<HealthProblem>();
+                healthProblems.Add(new HealthProblem()
+                {
+                    description = "Existing health problem with code from catalog",
+                    statusCode = DISEASE_ACTIVE,
+                    icdCode = results[0].ICDCode,
+                    icdVersion = results[0].ICDVersion,
+                    diagnosticDate = DateTime.Now.AddYears(-1) //Detected one year prior
+                });
+
+                healthProblems.Add(new HealthProblem()
+                {
+                    description = "Existing health problem with code from other catalogs",
+                    statusCode = DISEASE_ACTIVE,
+                    icdCode = "000111",
+                    icdVersion = "icd-test",
+                    diagnosticDate = DateTime.Now.AddMonths(-2) //Detected two months prior
+                });
+                healthProblems.Add(new HealthProblem()
+                {
+                    description = "Existing health problem but inactive with description only",
+                    statusCode = DISEASE_INACTIVE,
+                    diagnosticDate = DateTime.Now.AddYears(-2) //Detected two years prior
+                });
+
+
+                //Agregamos enfermedades
+                Console.WriteLine("-------- Agregamos diagnosticos encontrados en este encuentro -----");
+
+                List<EncounterDiagnostic> encounterDiagnostics = new List<EncounterDiagnostic>();
+                encounterDiagnostics.Add(new EncounterDiagnostic()
+                {
+                    description = "Diagnostic description with code from catalog",
+                    icdCode = results[1].ICDCode,
+                    icdVersion = results[1].ICDVersion
+                });
+
+                encounterDiagnostics.Add(new EncounterDiagnostic()
+                {
+                    description = "Diagnostic description with code from other catalogs",
+                    icdCode = "000111", 
+                    icdVersion = "icd-test"
+                });
+
+                encounterDiagnostics.Add(new EncounterDiagnostic()
+                {
+                    description = "Diagnostic description only"
+                });
+
+
+
                 Console.WriteLine("-------- Revisamos la prescripción y obtenemos una vista previa del documento de prescripción ------");
                 // Hacemos una revisión de la prescripción, esto es útil para obtener una imagen del documento de la prescripción y así poder confirmar.
                 // Una cita puede tener o no una prescripción, al hacer esto estamos especificando que sí tiene una prescripción.
@@ -177,6 +244,9 @@ namespace Demo
                 Console.WriteLine("-------- Finalizamos la cita y enviamos la prescripción ------");
                 CompleteEncounter encounterContainer = new CompleteEncounter();
                 encounterContainer.encounter = encounter;
+                encounterContainer.encounter.diagnostics = encounterDiagnostics;
+                encounterContainer.ehr = new EHR();
+                encounterContainer.ehr.healthProblems = healthProblems;
                 //Registramos la ubicación geográfica del médico, ya sea obtenida por el disposivo o especificada por medio de que se seleccione un consultorio al iniciar la cita.
                 // esto es importante para mantener una trazabilidad de las prescripciones por ubicación y ademas para que las farmacias cercanas puedan ver
                 // esta prescripción para poder cotizar.
