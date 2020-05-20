@@ -51,6 +51,8 @@ namespace Demo
                 //Obtenemos los catalogos necesarios
                 List<TimeUnit> timeUnits = catalogWebService.getTimeUnitsAsync().Result;
                 List<PrescriptionAbbreviature> prescriptionAbbreviatures = catalogWebService.getPrescriptionAbbreviaturesAsync().Result;
+                List<DoseUnit> doseUnits = catalogWebService.getDoseUnitsAsync().Result;
+                List<AdministrationRoute> administrationRoutes = catalogWebService.getAdministrationRoutesAsync().Result;
 
                 string newPhysicianIdentification = string.Format("{0}{1}{2}{3}{4}{5}", DateTime.Now.Day, DateTime.Now.Month, DateTime.Now.Year, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
                 //Se intenta hacer login para probar si medico existe
@@ -155,8 +157,7 @@ namespace Demo
                 prescriptionDrug.dose = suggestedDosage != null && suggestedDosage.dose != null ? suggestedDosage.dose.Value : 1;
                 prescriptionDrug.administrationRouteId = drugToAdd.administrationRouteById.Keys.First(); // Como ejemplo , utilizamos la primera via de administracion
                 prescriptionDrug.duration = suggestedDosage != null && suggestedDosage.duration != null ? suggestedDosage.duration.Value : 1;
-                prescriptionDrug.duration = suggestedDosage != null && suggestedDosage.duration != null ? suggestedDosage.duration.Value : 1;
-                prescriptionDrug.durationTimeUnitCode = suggestedDosage != null && !string.IsNullOrEmpty(suggestedDosage.durationTimeUnitCode) ? suggestedDosage.durationTimeUnitCode : timeUnits[0].code;
+                 prescriptionDrug.durationTimeUnitCode = suggestedDosage != null && !string.IsNullOrEmpty(suggestedDosage.durationTimeUnitCode) ? suggestedDosage.durationTimeUnitCode : timeUnits[0].code;
 
                 // Para la frecuencia del consumo utilizamos codigo predefinidos que establecen el horario, por ejemplo QUID , que significa 
                 prescriptionDrug.prescriptionAbbreviatureCode = suggestedDosage != null && !string.IsNullOrEmpty(suggestedDosage.prescriptionAbbreviatureCode) ? suggestedDosage.prescriptionAbbreviatureCode : prescriptionAbbreviatures[0].code;
@@ -170,8 +171,19 @@ namespace Demo
 
                 prescriptionDrug.notes = "Prueba desde DEMO API";
                 prescriptionDrug.vademecumId = environment.defaultVademecumId;
+
+                PrescriptionDrug manualPrescriptionDrug = new PrescriptionDrug();
+                manualPrescriptionDrug.drugDescription = "Manual drug";
+                manualPrescriptionDrug.doseUnitCode = doseUnits[0].code;
+                manualPrescriptionDrug.administrationRouteId = administrationRoutes[0].code;
+                manualPrescriptionDrug.dose = 1;
+                manualPrescriptionDrug.prescriptionAbbreviatureCode = prescriptionAbbreviatures[0].code;
+                manualPrescriptionDrug.duration =  1;
+                manualPrescriptionDrug.durationTimeUnitCode = timeUnits[0].code;
+
                 List<PrescriptionDrug> drugsToAdd = new List<PrescriptionDrug>();
                 drugsToAdd.Add(prescriptionDrug);
+                drugsToAdd.Add(manualPrescriptionDrug);
 
 
                 Console.WriteLine("-------- Agregamos enfermedades que queremos registrar en el expediente del paciente pero que habian sido detectadas en consultas pasadas -----");
